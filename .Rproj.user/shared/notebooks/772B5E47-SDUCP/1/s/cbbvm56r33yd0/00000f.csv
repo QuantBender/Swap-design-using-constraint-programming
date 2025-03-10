@@ -1,0 +1,81 @@
+"0","class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):"
+"0","    """"""Print intermediate solutions."""""""
+"0","    "
+"0","    def __init__(self, variables, max_dec_digits):"
+"0","        cp_model.CpSolverSolutionCallback.__init__(self)"
+"0","        self.__variables = variables"
+"0","        self.max_dec_digits = max_dec_digits"
+"0","        self.__solution_count = 0"
+"0","        self.solutions = []"
+"0","        "
+"0","        "
+"0","    def on_solution_callback(self):"
+"0","        self.__solution_count += 1"
+"0","        # for v in self.__variables:"
+"0","        #     print(f""{v}={self.Value(v)/self.max_dec_digits:.2f}"", end="" "")"
+"0","        # print()"
+"0","        self.solutions.append({v.Name(): self.Value(v)/self.max_dec_digits for v in self.__variables})"
+"0","        "
+"0","    @property"
+"0","    def solution_count(self):"
+"0","        return self.__solution_count"
+"0","        "
+"0","        "
+"0","def search_for_all_solutions_sample_sat( rf_A, rf_B, s_A, s_B, G_B, G_A, G_bank):"
+"0","    """"""Showcases calling the solver to search for all solutions."""""""
+"0","    # Creates the model."
+"0","    model = cp_model.CpModel()"
+"0","    max_dec_digits = 10**max([len(x) for x in [str(rate).split(""."")[-1] for rate in [rf_A, rf_B, s_A, s_B]]])"
+"0","    "
+"0","    rates_upper_bound = int(max_dec_digits*max(rf_A, rf_B))"
+"0","    # Define the variables"
+"0","    r_f_B_Bk = model.NewIntVar(0, rates_upper_bound, 'r_f_B_Bk')  # Upper bound 64.0"
+"0","    s_Bk_B = model.NewIntVar(-int(max_dec_digits), int(max_dec_digits), 's_Bk_B')       # Upper bound 6.0"
+"0","    r_f_Bk_A = model.NewIntVar(0, rates_upper_bound, 'r_f_Bk_A')  # Upper bound 64.0"
+"0","    s_A_Bk = model.NewIntVar(-int(max_dec_digits), int(max_dec_digits), 's_A_Bk')       # Upper bound 1.0"
+"0","    "
+"0","    # Define the constraints"
+"0","    model.Add(int(max_dec_digits*(rf_B-s_B)) - r_f_B_Bk + s_Bk_B == int(max_dec_digits*G_B))  # 58 - r_f_B_Bk + s_Bk_B == 4"
+"0","    model.Add(r_f_Bk_A - s_A_Bk + int(max_dec_digits*(s_A-rf_A))== int(max_dec_digits*G_A))  # r_f_Bk_A - 49 - s_A_Bk == 4"
+"0","    model.Add(r_f_B_Bk - r_f_Bk_A + s_A_Bk - s_Bk_B == int(max_dec_digits*G_bank))  # r_f_B_Bk - r_f_Bk_A + s_A_Bk - s_Bk_B == 1"
+"0","    # model.Add(r_f_Bk_A <= r_f_B_Bk)"
+"0","    # model.Add(s_Bk_B <= s_A_Bk)"
+"0","    model.Add(r_f_Bk_A >= int(max_dec_digits*rf_A))"
+"0","    model.Add(r_f_B_Bk <= int(max_dec_digits*rf_B))"
+"0","    model.Add(s_A_Bk <= int(max_dec_digits*s_A))"
+"0","    model.Add(s_Bk_B <= int(max_dec_digits*s_B))"
+"0","    "
+"0","    # Create a solver and solve."
+"0","    solver = cp_model.CpSolver()"
+"0","    solution_printer = VarArraySolutionPrinter([r_f_B_Bk, s_Bk_B, r_f_Bk_A, s_A_Bk], max_dec_digits)"
+"0","    # Enumerate all solutions."
+"0","    solver.parameters.enumerate_all_solutions = True"
+"0","    # Solve."
+"0","    status = solver.Solve(model, solution_printer)"
+"0","    "
+"0","    print(f""Status = {solver.StatusName(status)}"")"
+"0","    print(f""Number of solutions found: {solution_printer.solution_count}"")"
+"0","    return solution_printer.solutions"
+"0","    "
+"0","    "
+"0","solutions = search_for_all_solutions_sample_sat(5, 6.4, 0.1, 0.6, 0.4, 0.4, 0.1)"
+"1","Status = OPTIMAL
+Number of solutions found: 85
+"
+"0","pd.DataFrame(solutions).to_csv(""solutions.csv"", index=False)"
+"0","pd.DataFrame(solutions)"
+"1","    r_f_B_Bk  s_Bk_B  r_f_Bk_A  s_A_Bk
+0        4.4    -1.0       5.0    -0.3
+1        4.4    -1.0       5.1    -0.2
+2        4.4    -1.0       5.2    -0.1
+3        4.4    -1.0       5.3     0.0
+4        4.4    -1.0       5.4     0.1
+..       ...     ...       ...     ...
+80       4.9    -0.5       5.0    -0.3
+81       4.8    -0.6       5.0    -0.3
+82       4.7    -0.7       5.0    -0.3
+83       4.6    -0.8       5.0    -0.3
+84       4.5    -0.9       5.0    -0.3
+
+[85 rows x 4 columns]
+"

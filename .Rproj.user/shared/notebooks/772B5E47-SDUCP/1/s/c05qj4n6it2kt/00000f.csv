@@ -1,0 +1,82 @@
+"0","class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):"
+"0","    """"""Print intermediate solutions."""""""
+"0","    "
+"0","    def __init__(self, variables, max_dec_digits):"
+"0","        cp_model.CpSolverSolutionCallback.__init__(self)"
+"0","        self.__variables = variables"
+"0","        self.max_dec_digits = max_dec_digits"
+"0","        self.__solution_count = 0"
+"0","        self.solutions = []"
+"0","        "
+"0","        "
+"0","    def on_solution_callback(self):"
+"0","        self.__solution_count += 1"
+"0","        # for v in self.__variables:"
+"0","        #     print(f""{v}={self.Value(v)/self.max_dec_digits:.2f}"", end="" "")"
+"0","        # print()"
+"0","        self.solutions.append({v.Name(): self.Value(v)/self.max_dec_digits for v in self.__variables})"
+"0","        "
+"0","    @property"
+"0","    def solution_count(self):"
+"0","        return self.__solution_count"
+"0","        "
+"0","        "
+"0","def search_for_all_solutions_sample_sat( rfDollar_A, rfDollar_B, rfYen_A, rfYen_B, G_B, G_A, G_bank):"
+"0","    """"""Showcases calling the solver to search for all solutions."""""""
+"0","    # Creates the model."
+"0","    model = cp_model.CpModel()"
+"0","    max_dec_digits = 10**max([len(x) for x in [str(rate).split(""."")[-1] for rate in [rfDollar_A, rfDollar_B, rfYen_A, rfYen_B]]])"
+"0","    "
+"0","    rates_upper_bound = int(max_dec_digits*max(rfDollar_A, rfDollar_B, rfYen_A, rfYen_B))"
+"0","    "
+"0","    # Define the variables"
+"0","    r_f_Dollar_A_Bk = model.NewIntVar(0, rates_upper_bound, 'r_f_Dollar_A_Bk')"
+"0","    r_f_Yen_Bk_A = model.NewIntVar(0, rates_upper_bound, 'r_f_Yen_Bk_A')  "
+"0","    r_f_Dollar_Bk_B = model.NewIntVar(0, rates_upper_bound, 'r_f_Dollar_Bk_B')"
+"0","    r_f_Yen_B_Bk = model.NewIntVar(0, rates_upper_bound, 'r_f_Yen_B_Bk') "
+"0","    "
+"0","    # Define the constraints"
+"0","    model.Add(int(max_dec_digits*(rfDollar_B)) - r_f_Dollar_Bk_B - r_f_Yen_B_Bk+int(max_dec_digits*rfYen_B) == int(max_dec_digits*G_B))  "
+"0","    model.Add(int(max_dec_digits*rfDollar_A) - r_f_Dollar_A_Bk  - int(max_dec_digits*(rfYen_A))+ r_f_Yen_Bk_A== int(max_dec_digits*G_A))  "
+"0","    model.Add(r_f_Dollar_A_Bk - r_f_Dollar_Bk_B + r_f_Yen_B_Bk - r_f_Yen_Bk_A == int(max_dec_digits*G_bank))"
+"0","    model.Add(r_f_Dollar_Bk_B >= r_f_Dollar_A_Bk)"
+"0","    model.Add(r_f_Yen_Bk_A <= r_f_Yen_B_Bk)"
+"0","    model.Add(r_f_Dollar_A_Bk <= int(max_dec_digits*rfDollar_A))"
+"0","    model.Add(r_f_Dollar_Bk_B <= int(max_dec_digits*rfDollar_B))"
+"0","    model.Add(r_f_Yen_B_Bk <= int(max_dec_digits*rfYen_B))"
+"0","    model.Add(r_f_Yen_Bk_A <= int(max_dec_digits*rfYen_A))"
+"0","    "
+"0","    solver = cp_model.CpSolver()"
+"0","    solution_printer = VarArraySolutionPrinter([r_f_Dollar_A_Bk, r_f_Yen_Bk_A, r_f_Dollar_Bk_B, r_f_Yen_B_Bk], max_dec_digits)"
+"0","    # Enumerate all solutions."
+"0","    solver.parameters.enumerate_all_solutions = True"
+"0","    # Solve."
+"0","    status = solver.Solve(model, solution_printer)"
+"0","    "
+"0","    print(f""Status = {solver.StatusName(status)}"")"
+"0","    print(f""Number of solutions found: {solution_printer.solution_count}"")"
+"0","    return solution_printer.solutions"
+"0","    "
+"0","    "
+"0","solutions = search_for_all_solutions_sample_sat(9.6, 10, 5, 6.5, 0.3, 0.3, 0.5)"
+"1","Status = OPTIMAL
+Number of solutions found: 501
+"
+"0","pd.DataFrame(solutions).to_csv(""solutions.csv"", index=False)"
+"0","pd.DataFrame(solutions)"
+"1","     r_f_Dollar_A_Bk  r_f_Yen_Bk_A  r_f_Dollar_Bk_B  r_f_Yen_B_Bk
+0               4.30          0.00             10.0           6.2
+1               4.31          0.01             10.0           6.2
+2               4.32          0.02             10.0           6.2
+3               4.33          0.03             10.0           6.2
+4               4.34          0.04             10.0           6.2
+..               ...           ...              ...           ...
+496             9.26          4.96         "
+"1","    10.0           6.2
+497             9.27          4.97             10.0           6.2
+498             9.28          4.98             10.0           6.2
+499             9.29          4.99             10.0           6.2
+500             9.30          5.00             10.0           6.2
+
+[501 rows x 4 columns]
+"
